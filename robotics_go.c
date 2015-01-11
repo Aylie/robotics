@@ -43,9 +43,16 @@ void set_dirty_map(int x, int y, int orien, int *dirty_map, int value)
 	dirty_map[(orien-1)*5*5 + x*5 + y] = value;
 }
 
-int go(int x, int y, int orien, int *rout_map, int *dirty_map, int number)
+void save_rout(int x, int y, int rout, int* rout_map) //0: X, 1~4: available rout, need to move box1, 5~8: available rout, need to move box2, 9~12: available rout, need to move box3
 {
-	//printf("enter go from (%d, %d), orien = %d\n", x, y, orien);
+	*(rout_map + (x*5 + y)) = rout;
+	//printf("save %d, %d as %d\n", x, y, rout_map[x*5 + y]);
+	return;
+}
+
+int go(int x, int y, int orien, int *rout_map, int *dirty_map, int number, int map_index)
+{
+	printf("enter go from (%d, %d), orien = %d\n", x, y, orien);
 	int object, rout = 0;
 	
 	if((x < 0)||(x >= 5)||(y < 0)||(y >= 5))
@@ -58,22 +65,22 @@ int go(int x, int y, int orien, int *rout_map, int *dirty_map, int number)
 	}
 	
 	
-	object = map(x, y);
+	object = map(x, y, map_index);
 	if((object == 1) || (object == 2)){
 		rout = 0;
-		//printf("rout %d, %d = %d obstacle\n", x, y, rout);
+		printf("rout %d, %d = %d obstacle\n", x, y, rout);
 		set_dirty_map(x, y, orien, dirty_map, rout);
 		return rout;
 	}
 	
 	if(orien){
-		int available_result = available(x, y);
+		int available_result = available(x, y, map_index);
 		//printf("available result = %d, orien = %d\n", available_result, orien);
 		if(available_result != 3){
 			if((orien == 1)||(orien == 2)){
 				if(available_result != 1){
 					rout = 0;
-					//printf("rout %d, %d = %d orien\n", x, y, rout);
+					printf("rout %d, %d = %d orien\n", x, y, rout);
 					set_dirty_map(x, y, orien, dirty_map, rout);
 					return rout;
 				}
@@ -82,7 +89,7 @@ int go(int x, int y, int orien, int *rout_map, int *dirty_map, int number)
 			else if((orien == 3)||(orien == 4)){
 				if(available_result != 2){
 					rout = 0;
-					//printf("rout %d, %d = %d orien\n", x, y, rout);
+					printf("rout %d, %d = %d orien\n", x, y, rout);
 					set_dirty_map(x, y, orien, dirty_map, rout);
 					return rout;
 				}
@@ -95,7 +102,7 @@ int go(int x, int y, int orien, int *rout_map, int *dirty_map, int number)
 		if(number == 1){
 			save_rout(x, y, rout, rout_map);
 			set_dirty_map(x, y, orien, dirty_map, rout);
-			//printf("rout %d, %d = %d box1\n", x, y, rout);
+			printf("rout %d, %d = %d box1\n", x, y, rout);
 			return rout;
 		}
 	}
@@ -104,7 +111,7 @@ int go(int x, int y, int orien, int *rout_map, int *dirty_map, int number)
 		if(number == 2){
 			save_rout(x, y, rout, rout_map);
 			set_dirty_map(x, y, orien, dirty_map, rout);
-			//printf("rout %d, %d = %d box1\n", x, y, rout);
+			printf("rout %d, %d = %d box2\n", x, y, rout);
 			return rout;
 		}
 	}
@@ -113,7 +120,7 @@ int go(int x, int y, int orien, int *rout_map, int *dirty_map, int number)
 		if(number == 3){
 			save_rout(x, y, rout, rout_map);
 			set_dirty_map(x, y, orien, dirty_map, rout);
-			//printf("rout %d, %d = %d box1\n", x, y, rout);
+			printf("rout %d, %d = %d box3\n", x, y, rout);
 			return rout;
 		}
 	}
@@ -121,19 +128,19 @@ int go(int x, int y, int orien, int *rout_map, int *dirty_map, int number)
 	//0: X, 1: L, 2: R, 3: U, 4: D
 	switch(orien){
 		case 1:
-			rout += go(x, y+1, 1, rout_map, dirty_map, number) + go(x+1, y, 3, rout_map, dirty_map, number) + go(x-1, y, 4, rout_map, dirty_map, number);
+			rout += go(x, y+1, 1, rout_map, dirty_map, number, map_index) + go(x+1, y, 3, rout_map, dirty_map, number, map_index) + go(x-1, y, 4, rout_map, dirty_map, number, map_index);
 			break;
 		case 2:
-			rout += go(x, y-1, 2, rout_map, dirty_map, number) + go(x+1, y, 3, rout_map, dirty_map, number) + go(x-1, y, 4, rout_map, dirty_map, number);
+			rout += go(x, y-1, 2, rout_map, dirty_map, number, map_index) + go(x+1, y, 3, rout_map, dirty_map, number, map_index) + go(x-1, y, 4, rout_map, dirty_map, number, map_index);
 			break;
 		case 3:
-			rout += go(x+1, y, 3, rout_map, dirty_map, number) + go(x, y-1, 2, rout_map, dirty_map, number) + go(x, y+1, 1, rout_map, dirty_map, number);
+			rout += go(x+1, y, 3, rout_map, dirty_map, number, map_index) + go(x, y-1, 2, rout_map, dirty_map, number, map_index) + go(x, y+1, 1, rout_map, dirty_map, number, map_index);
 			break;
 		case 4:
-			rout += go(x-1, y, 4, rout_map, dirty_map, number) + go(x, y-1, 2, rout_map, dirty_map, number) + go(x, y+1, 1, rout_map, dirty_map, number);
+			rout += go(x-1, y, 4, rout_map, dirty_map, number, map_index) + go(x, y-1, 2, rout_map, dirty_map, number, map_index) + go(x, y+1, 1, rout_map, dirty_map, number, map_index);
 			break;
 		default:
-			rout += go(x+1, y, 3, rout_map, dirty_map, number) + go(x-1, y, 4, rout_map, dirty_map, number) + go(x, y+1, 1, rout_map, dirty_map, number) + go(x, y-1, 2, rout_map, dirty_map, number);
+			rout += go(x+1, y, 3, rout_map, dirty_map, number, map_index) + go(x-1, y, 4, rout_map, dirty_map, number, map_index) + go(x, y+1, 1, rout_map, dirty_map, number, map_index) + go(x, y-1, 2, rout_map, dirty_map, number, map_index);
 			break;
 	}
 	
@@ -163,7 +170,7 @@ int go(int x, int y, int orien, int *rout_map, int *dirty_map, int number)
 		rout = 0;
 	save_rout(x, y, rout, rout_map);
 	set_dirty_map(x, y, orien, dirty_map, rout);
-	//printf("rout %d, %d = %d return\n", x, y, rout);
+	printf("rout %d, %d = %d return\n", x, y, rout);
 	return rout;	
 }
 
@@ -187,22 +194,15 @@ int initial_dirty_map(int *dirty_map) //initial to -1
 	return i;
 }
 
-void save_rout(int x, int y, int rout, int* rout_map) //0: X, 1~4: available rout, need to move box1, 5~8: available rout, need to move box2, 9~12: available rout, need to move box3
-{
-	*(rout_map + (x*5 + y)) = rout;
-	//printf("save %d, %d as %d\n", x, y, rout_map[x*5 + y]);
-	return;
-}
-
-int available(int x, int y) //0: X, 1: LR, 2: UD, 3:LRUD
+int available(int x, int y, int map_index) //0: X, 1: LR, 2: UD, 3:LRUD
 {
 	if((x < 0)||(x >= 5)||(y < 0)||(y >= 5))
 		return 0;
 	
 	int flag = 0;
-	if((map(x, y-1) != 2)&&(map(x, y-1) != 1)&&(map(x, y+1) != 2)&&(map(x, y+1) != 1))
+	if((map(x, y-1, map_index) != 2)&&(map(x, y-1, map_index) != 1)&&(map(x, y+1, map_index) != 2)&&(map(x, y+1, map_index) != 1))
 		flag = 1;
-	if((map(x-1, y) != 1)&&(map(x-1, y) != 2)&&(map(x+1, y) != 1)&&(map(x+1, y) != 2)){
+	if((map(x-1, y, map_index) != 1)&&(map(x-1, y, map_index) != 2)&&(map(x+1, y, map_index) != 1)&&(map(x+1, y, map_index) != 2)){
 		if(flag)
 			return 3;
 		else	
@@ -214,7 +214,7 @@ int available(int x, int y) //0: X, 1: LR, 2: UD, 3:LRUD
 // testbench below
 
 
-
+/*
 int map(int x, int y)
 {
 	if((x < 0)||(x >= 5)||(y < 0)||(y >= 5))
@@ -227,14 +227,15 @@ int map(int x, int y)
 					 8, 0, 5, 0, 0};
 	return map[x][y];
 }
+*/
 
-void print_map(void)
+void print_map(int map_index)
 {
 	int i, j;
 	printf("this is map :\n");
 	for(i = 0; i < 5; i++){
 		for(j = 0; j < 5; j++)
-			printf(" %d ", map(i, j));
+			printf(" %d ", map(i, j, map_index));
 		printf("\n");
 	}
 	printf("\n");
@@ -260,21 +261,22 @@ int main(void)
 	int i, j;
 	int dot[3][2];
 	
-	print_map();
+	picture_to_map();
+	print_map(0);
 	
 	for(i = 0; i < 5; i++)
 		for(j = 0; j < 5; j++){
-			if(map(i, j) == 6){
+			if(map(i, j, 0) == 6){
 				dot[0][0] = i;
 				dot[0][1] = j;
 				//printf("dot1 = %d, %d\n", i, j);
 			}
-			else if(map(i, j) == 7){
+			else if(map(i, j, 0) == 7){
 				dot[1][0] = i;
 				dot[1][1] = j;
 				//printf("dot2 = %d, %d\n", i, j);
 			}
-			else if(map(i, j) == 8){
+			else if(map(i, j, 0) == 8){
 				dot[2][0] = i;
 				dot[2][1] = j;
 				//printf("dot3 = %d, %d\n", i, j);
@@ -297,9 +299,9 @@ int main(void)
 		if(flag == 0)
 			printf("initial dirty map erro\n");
 		
-		go(dot[i][0], dot[i][1], 0, &rout_map[i][0][0], &dirty_map[0][0][0], i+1);
-		//printf("\nfinish %d go\n", i+1);
-		//print_rout_map(&rout_map[0][0][0]);
+		go(dot[i][0], dot[i][1], 0, &rout_map[i][0][0], &dirty_map[0][0][0], i+1, 0);
+		printf("\nfinish %d go\n", i+1);
+		print_rout_map(&rout_map[0][0][0]);
 	}
 	
 	print_rout_map(&rout_map[0][0][0]);
