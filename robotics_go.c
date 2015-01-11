@@ -13,8 +13,97 @@
 
 //define #BOX, #BOX2, #BOX3
 
-#include<stdio.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 
+float raw[12][6];
+int obj_num=0;
+int origin_map[5][5];
+int robot_map[5][5];
+
+
+//picture to map
+void picture_to_map(void)
+{
+	int i,j,x_cur,y_cur;	
+	for(i=0;i<5;i++){
+		for(j=0;j<5;j++){
+			origin_map[i][j] = 0;
+		}
+	}
+	float len,wide;
+	FILE* fp = fopen("output1","r");
+	fscanf(fp,"%f %f\n",&len,&wide);
+	/* raw manual 
+		0: pixel size
+		1: x coordinate
+		2: y coordinate
+		3: orientation angle of object
+		4: 1=destination or 2=blocks
+		5: colours or 0=obsticle
+	*/
+	wide/=5;
+	len /=5;
+	while(fscanf(fp,"%f %f %f %f %f %f\n",&raw[obj_num][0],&raw[obj_num][1],&raw[obj_num][2],&raw[obj_num][3],&raw[obj_num][4],&raw[obj_num][5])!=EOF){
+		x_cur =0;
+		y_cur =0;
+		while((y_cur*wide)<raw[obj_num][1]){
+			y_cur++;
+		}
+		while((x_cur*wide)<raw[obj_num][2]){
+			x_cur++;
+		}
+		if(raw[obj_num][5]==0){
+			origin_map[x_cur-1][y_cur-1] = 2;
+		}else if(raw[obj_num][5]==1){
+			if(raw[obj_num][4]==1){
+				origin_map[x_cur-1][y_cur-1] = 6;
+			}else if(raw[obj_num][4]==2){
+				origin_map[x_cur-1][y_cur-1] = 3;
+			}
+		}else if(raw[obj_num][5]==2){
+			if(raw[obj_num][4]==1){
+				origin_map[x_cur-1][y_cur-1] = 7;
+			}else if(raw[obj_num][4]==2){
+				origin_map[x_cur-1][y_cur-1] = 4;
+			}
+		}else if(raw[obj_num][5]==3){
+			if(raw[obj_num][4]==1){
+				origin_map[x_cur-1][y_cur-1] = 8;
+			}else if(raw[obj_num][4]==2){
+				origin_map[x_cur-1][y_cur-1] = 5;
+			}
+		}
+		obj_num++;
+	}
+	//if((x < 0)||(x >= 5)||(y < 0)||(y >= 5))
+		//return 1;
+	//int m[5][5];	
+	/*int m[5][5] = {0, 0, 0, 0, 0,
+					 0, 2, 3, 0, 2,
+					 0, 6, 0, 8, 0,
+					 0, 5, 2, 0, 0,
+					 0, 0, 4, 0, 7};*/
+	//return m[x][y];
+	
+}
+
+int map(int x,int y, int map_index){
+	if(x>4 || y>4 || x<0 || y<0){
+		return 1;
+	}
+	
+	if(map_index == 0)
+		return origin_map[x][y];
+	else if(map_index == 1)
+		return robot_map[x][y];
+}
+
+
+//creat box_rout_map
 int check_dirty_map(int x, int y, int orien, int *dirty_map)
 {
 	/*
@@ -174,7 +263,6 @@ int go(int x, int y, int orien, int *rout_map, int *dirty_map, int number, int m
 	return rout;	
 }
 
-//int rout_map[5][5];
 
 int initial_rout_map(int *rout_map) // initial to 0
 {
@@ -211,31 +299,13 @@ int available(int x, int y, int map_index) //0: X, 1: LR, 2: UD, 3:LRUD
 	return flag;
 }
 
-// testbench below
-
-
-/*
-int map(int x, int y)
-{
-	if((x < 0)||(x >= 5)||(y < 0)||(y >= 5))
-		return 1;
-		
-	int map[5][5] = {0, 0, 0, 0, 0,
-					 0, 2, 0, 0, 2,
-					 0, 6, 3, 7, 0,
-					 0, 4, 2, 0, 0,
-					 8, 0, 5, 0, 0};
-	return map[x][y];
-}
-*/
-
-void print_map(int map_index)
+void print_map(int *map)
 {
 	int i, j;
 	printf("this is map :\n");
 	for(i = 0; i < 5; i++){
 		for(j = 0; j < 5; j++)
-			printf(" %d ", map(i, j, map_index));
+			printf(" %d ", map[i*5 + j]);
 		printf("\n");
 	}
 	printf("\n");
@@ -256,17 +326,316 @@ void print_rout_map(int *rout_map)
 	return;
 }
 
+
+
+//map decoder
+
+int check_rout_value_map(int x, int y, int *rout_value_map)
+{
+	if((x < 0)||(x >= 5)||(y < 0)||(y >= 5))
+		return 0;
+		
+	return rout_value_map[x*5 + y];
+}
+
+int check_rout_value(int rout_value, int number)
+{
+	if(rout_value == 0)
+		return 0;
+		
+	int flag;
+	switch(number){
+		case 1:{
+			if((rout_value == 1)||(rout_value == 6)||(rout_value == 10)||(rout_value > 14))
+				flag = 1;
+			break;
+		}
+		case 2:{
+			if((rout_value == 5)||(rout_value == 6)||(rout_value == 14)||(rout_value > 14))
+				flag = 1;
+			break;
+		}
+		case 3:{
+			if((rout_value == 9)||(rout_value == 10)||(rout_value == 14)||(rout_value > 14))
+				flag = 1;
+			break;
+		}
+		default :
+			flag = 0;
+			break;
+	}
+	
+	return flag;
+}
+
+
+void initial_robot_map(void)
+{
+	int i, j;
+	for(i = 0; i < 5; i++)
+		for(j = 0; j < 5; j++){
+			if((map(i, j, 0) == 0)||(map(i, j, 0) >= 6))
+				robot_map[i][j] = 0; //set dot as free as well
+			else	
+				robot_map[i][j] = 2; //set box as obstacle as well
+		}
+}
+
+void set_robot_map(int x, int y, int value)
+{
+	robot_map[x][y] = value;
+}
+
+//0: X, 1: L, 2: R, 3: U, 4: D
+void robot_map_decoder(int now_x, int now_y, int go_x, int go_y, int fd)
+{
+	char buffer;
+	if(go_x > now_x){
+		if(robot_map[now_x+1][now_y]){
+			//do down
+			buffer = 4;
+			write(fd, &buffer, 1);
+			
+			robot_map_decoder(now_x+1, now_y, go_x, go_y, fd);
+		}
+	}
+	
+	else{
+		if(robot_map[now_x-1][now_y]){
+			//do up
+			buffer = 3;
+			write(fd, &buffer, 1);
+			
+			robot_map_decoder(now_x-1, now_y, go_x, go_y, fd);
+		}
+	}
+	
+	if(go_y > now_y){
+		if(robot_map[now_x][now_y+1]){
+			//do right
+			buffer = 2;
+			write(fd, &buffer, 1);
+			
+			robot_map_decoder(now_x, now_y+1, go_x, go_y, fd);
+		}
+	}
+	
+	else{
+		if(robot_map[now_x-1][now_y]){
+			//do left
+			buffer = 1;
+			write(fd, &buffer, 1);
+			
+			robot_map_decoder(now_x, now_y-1, go_x, go_y, fd);
+		}
+	}
+}
+
+//0: X, 1: V, 2: you are here
+int robot_go_to(int now_x, int now_y, int go_x, int go_y, int fd)
+{
+	if((now_x == go_x)&&(now_y == go_y))
+		return 2;
+	
+	int robot_dirty_map[4][5][5];
+	int flag;
+	flag = initial_dirty_map(&robot_dirty_map[0][0][0]);
+	if(flag == 0)
+		printf("initial dirty map erro\n");
+	
+	robot_map[now_x][now_y] = 3;
+	int robot_rout_map[5][5];
+	flag = go(go_x, go_y, 0, &robot_rout_map[0][0], &robot_dirty_map[0][0][0], 1, 1);
+	print_map(robot_rout_map);
+	
+	if(flag)
+		robot_map_decoder(now_x, now_y, go_x, go_y, fd);
+	
+	return flag;
+}
+
+//0: X, 1: L, 2: R, 3: U, 4: D, 5: grab, 6: open
+int rout_value_map_decoder(int x, int y, int orien, int *dot, int number, int *rout_value_map, int fd) //dot (x, y) = (dot[0], dot[y])
+{
+	int rout_value;
+	char buffer;
+	
+	int robot_flag = 0, orien_flag = 0;
+	
+	if((x == dot[0])||(y == dot[1])){
+		buffer = 6;
+		write(fd, &buffer, 1);
+		return 1;
+	}
+	
+	if(dot[0] > x){
+		rout_value = check_rout_value_map(x+1, y, rout_value_map);
+	
+		if(check_rout_value(rout_value, number)){
+			if(orien != 4)
+				orien_flag = 1;
+			
+			if(orien_flag){
+				buffer = 6;
+				write(fd, &buffer, 1);
+				//open if need to turn
+			}
+			
+			robot_flag = robot_go_to(x, y, x-1, y, fd); //turn to box
+			if(robot_flag == 0)
+				printf("robot can't go\n");
+			
+			if(orien_flag){
+				buffer = 5;
+				write(fd, &buffer, 1);
+				//grab if need to turn
+			}
+			
+			buffer = 4;
+			write(fd, &buffer, 1);
+			
+			set_robot_map(x, y, 0);
+			set_robot_map(x+1, y, 2);
+			
+			//go down
+			return (rout_value_map_decoder(x+1, y, 4, dot, number, rout_value_map, fd));			
+		}
+	}
+	
+	else{
+		rout_value = check_rout_value_map(x-1, y, rout_value_map);
+	
+		if(check_rout_value(rout_value, number)){
+			if(orien != 3)
+				orien_flag = 1;
+			
+			if(orien_flag){
+				buffer = 6;
+				write(fd, &buffer, 1);
+				//open if need to turn
+			}
+			
+			robot_flag = robot_go_to(x, y, x+1, y, fd); //turn to box
+			if(robot_flag == 0)
+				printf("robot can't go\n");
+			
+			if(orien_flag){
+				buffer = 5;
+				write(fd, &buffer, 1);
+				//grab if need to turn
+			}
+			
+			buffer = 3;
+			write(fd, &buffer, 1);
+			
+			set_robot_map(x, y, 0);
+			set_robot_map(x-1, y, 2);
+			
+			//go up
+			return (rout_value_map_decoder(x-1, y, 3, dot, number, rout_value_map, fd));
+		}
+	}
+	
+	if(dot[1] > y){
+		rout_value = check_rout_value_map(x, y+1, rout_value_map);
+	
+		if(check_rout_value(rout_value, number)){
+			if(orien != 2)
+				orien_flag = 1;
+			
+			if(orien_flag){
+				buffer = 6;
+				write(fd, &buffer, 1);
+				//open if need to turn
+			}
+			
+			robot_flag = robot_go_to(x, y, x, y-1, fd); //turn to box
+			if(robot_flag == 0)
+				printf("robot can't go\n");
+			
+			if(orien_flag){
+				buffer = 5;
+				write(fd, &buffer, 1);
+				//grab if need to turn
+			}
+			
+			buffer = 2;
+			write(fd, &buffer, 1);
+			
+			set_robot_map(x, y, 0);
+			set_robot_map(x, y+1, 2);
+			
+			//go right
+			return (rout_value_map_decoder(x, y+1, 2, dot, number, rout_value_map, fd));
+		}
+	}
+	
+	else{
+		rout_value = check_rout_value_map(x, y-1, rout_value_map);
+	
+		if(check_rout_value(rout_value, number)){
+			if(orien != 1)
+				orien_flag = 1;
+			
+			if(orien_flag){
+				buffer = 6;
+				write(fd, &buffer, 1);
+				//open if need to turn
+			}
+			
+			robot_flag = robot_go_to(x, y, x-1, y, fd); //turn to box
+			if(robot_flag == 0)
+				printf("robot can't go\n");
+			
+			if(orien_flag){
+				buffer = 5;
+				write(fd, &buffer, 1);
+				//grab if need to turn
+			}
+			
+			buffer = 1;
+			write(fd, &buffer, 1);
+			
+			set_robot_map(x, y, 0);
+			set_robot_map(x, y-1, 2);
+			
+			//go left
+			return (rout_value_map_decoder(x, y-1, 1, dot, number, rout_value_map, fd));
+		}
+	}
+	
+	return 0;
+}
+
+
+// testbench below
 int main(void)
 {
 	int i, j;
+	int box[3][2];
 	int dot[3][2];
 	
 	picture_to_map();
-	print_map(0);
+	print_map(origin_map);
 	
 	for(i = 0; i < 5; i++)
 		for(j = 0; j < 5; j++){
-			if(map(i, j, 0) == 6){
+			if(map(i, j, 0) == 3){
+				box[0][0] = i;
+				box[0][1] = j;
+				//printf("box1 = %d, %d\n", i, j);
+			}
+			else if(map(i, j, 0) == 4){
+				box[1][0] = i;
+				box[1][1] = j;
+				//printf("box2 = %d, %d\n", i, j);
+			}
+			else if(map(i, j, 0) == 5){
+				box[2][0] = i;
+				box[2][1] = j;
+				//printf("box1 = %d, %d\n", i, j);
+			}
+			else if(map(i, j, 0) == 6){
 				dot[0][0] = i;
 				dot[0][1] = j;
 				//printf("dot1 = %d, %d\n", i, j);
@@ -304,7 +673,17 @@ int main(void)
 		print_rout_map(&rout_map[0][0][0]);
 	}
 	
-	print_rout_map(&rout_map[0][0][0]);
+	//print_rout_map(&rout_map[0][0][0]);
 	
+	//decorder testbench below
+	int fd = open("robot_rout.txt", O_RDWR|O_APPEND);
+	
+	initial_robot_map();
+	
+	for(i = 0; i < 3; i++){
+		rout_value_map_decoder(box[i][0], box[i][1], 0, &dot[i][0], i, &rout_map[i][0][0], fd);
+	}
+	
+	close(fd);
 	return 0;
 }
