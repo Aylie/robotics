@@ -35,7 +35,7 @@ void picture_to_map(void)
 		}
 	}
 	float len,wide;
-	FILE* fp = fopen("output1","r");
+	FILE* fp = fopen("output1.txt","r");
 	fscanf(fp,"%f %f\n",&len,&wide);
 	/* raw manual 
 		0: pixel size
@@ -139,6 +139,7 @@ void save_rout(int x, int y, int rout, int* rout_map) //0: X, 1~4: available rou
 	return;
 }
 
+int temp[5][5];
 int go(int x, int y, int orien, int *rout_map, int *dirty_map, int number, int map_index)
 {
 	printf("enter go from (%d, %d), orien = %d\n", x, y, orien);
@@ -146,7 +147,12 @@ int go(int x, int y, int orien, int *rout_map, int *dirty_map, int number, int m
 	
 	if((x < 0)||(x >= 5)||(y < 0)||(y >= 5))
 		return 0;
-	
+
+	if(temp[x][y] == 1)
+		return 0;
+	else
+		temp[x][y] = 1;
+		
 	int dirty_value =  check_dirty_map(x, y, orien, dirty_map);
 	if(dirty_value != -1){
 		//printf("dirty!! (%d, %d) is %d\n", x, y, dirty_value);
@@ -260,6 +266,7 @@ int go(int x, int y, int orien, int *rout_map, int *dirty_map, int number, int m
 	save_rout(x, y, rout, rout_map);
 	set_dirty_map(x, y, orien, dirty_map, rout);
 	printf("rout %d, %d = %d return\n", x, y, rout);
+	temp[x][y] = 0;
 	return rout;	
 }
 
@@ -383,6 +390,9 @@ void initial_robot_map(void)
 
 void set_robot_map(int x, int y, int value)
 {
+	printf("set %d, %d as %d\n", x, y, value);
+	print_map(&robot_map[0][0]);
+	
 	robot_map[x][y] = value;
 }
 
@@ -434,6 +444,7 @@ void robot_map_decoder(int now_x, int now_y, int go_x, int go_y, int fd)
 //0: X, 1: V, 2: you are here
 int robot_go_to(int now_x, int now_y, int go_x, int go_y, int fd)
 {
+	printf("robot go from %d, %d to %d, %d\n", now_x, now_y, go_x, go_y);
 	if((now_x == go_x)&&(now_y == go_y))
 		return 2;
 	
@@ -444,9 +455,16 @@ int robot_go_to(int now_x, int now_y, int go_x, int go_y, int fd)
 		printf("initial dirty map erro\n");
 	
 	robot_map[now_x][now_y] = 3;
+	
 	int robot_rout_map[5][5];
+	int i, j;
+	for(i = 0; i < 5; i++)
+		for(j = 0; j < 5; j++)
+			robot_rout_map[i][j] = 0;
+	
 	flag = go(go_x, go_y, 0, &robot_rout_map[0][0], &robot_dirty_map[0][0][0], 1, 1);
 	print_map(robot_rout_map);
+	
 	
 	if(flag)
 		robot_map_decoder(now_x, now_y, go_x, go_y, fd);
@@ -457,6 +475,8 @@ int robot_go_to(int now_x, int now_y, int go_x, int go_y, int fd)
 //0: X, 1: L, 2: R, 3: U, 4: D, 5: grab, 6: open
 int rout_value_map_decoder(int x, int y, int orien, int *dot, int number, int *rout_value_map, int fd) //dot (x, y) = (dot[0], dot[y])
 {
+	printf("enter rout map decorder\n");
+
 	int rout_value;
 	char buffer;
 	
@@ -616,7 +636,7 @@ int main(void)
 	int dot[3][2];
 	
 	picture_to_map();
-	print_map(origin_map);
+	print_map(&origin_map[0][0]);
 	
 	for(i = 0; i < 5; i++)
 		for(j = 0; j < 5; j++){
@@ -652,7 +672,10 @@ int main(void)
 			}
 		}
 
-	
+	for(i = 0; i < 5; i++)
+		for(j = 0; j < 5; j++)
+			temp[i][j] = 0;
+
 	int rout_map[3][5][5];
 	int dirty_map[4][5][5];
 	
@@ -673,13 +696,15 @@ int main(void)
 		print_rout_map(&rout_map[0][0][0]);
 	}
 	
+	print_map(&origin_map[0][0]);
 	//print_rout_map(&rout_map[0][0][0]);
 	
 	//decorder testbench below
 	int fd = open("robot_rout.txt", O_RDWR|O_APPEND);
 	
 	initial_robot_map();
-	
+	print_map(&robot_map[0][0]);
+
 	for(i = 0; i < 3; i++){
 		rout_value_map_decoder(box[i][0], box[i][1], 0, &dot[i][0], i, &rout_map[i][0][0], fd);
 	}
